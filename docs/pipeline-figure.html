@@ -57,9 +57,19 @@ h1{font:600 clamp(28px,4vw,40px)/1.1 var(--display);margin:0;text-wrap:balance}
 .down{display:grid;grid-template-columns:110px 1fr;gap:16px;margin:-14px 0}
 .down span{color:var(--muted);font-size:18px;line-height:1;padding-left:34px}
 .spacer{flex:1 1 0}
+.card.cached{border-left:1px dashed var(--c);border-right:1px dashed var(--c);border-bottom:1px dashed var(--c)}
+.cachetag{font:500 11px var(--mono);color:var(--muted)}
+.arrow.exit{color:var(--gate)}
+.card.end{flex:0.7 1 0;--c:var(--muted);--cb:var(--bg);background:var(--bg)}
+.sw.cached{background:var(--paper);border:1.5px dashed var(--muted)}
+.cap{display:grid;grid-template-columns:110px 1fr;gap:16px;align-items:start}
+.cap-body{background:var(--loop-bg);border:1px solid var(--loop);border-radius:12px;padding:14px 18px;display:grid;gap:6px;min-width:0}
+.cap-body h2{font:600 16px var(--display);margin:0;color:var(--ink)}
+.cap-body p{margin:0;font-size:13.5px;line-height:1.5}
+.cap-body code{font:12.5px var(--mono);background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
 footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
 @media (max-width:900px){
-  .phase,.io,.down{grid-template-columns:1fr}
+  .phase,.io,.down,.cap{grid-template-columns:1fr}
   .row{flex-direction:column}
   .arrow{flex-basis:22px;transform:rotate(90deg)}
   .spacer{display:none}
@@ -69,7 +79,7 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Agent architecture · 14 stages · 2 bounded loops</div>
+    <div class="eyebrow">Agent architecture · 14 stages · 2 bounded loops · token gates</div>
     <h1>Research Assistant: from a research topic to recommended directions</h1>
     <p class="lede">A domain-agnostic agent for early-stage research planning. It detects the discipline, searches that field's literature, finds open problems, proposes concrete directions, and checks every claim and citation before writing the report.</p>
     <div class="principle">The LLM reasons, the APIs remember. <em>Every reference comes from a database record retrieved in the run; the model may only cite those records.</em></div>
@@ -78,6 +88,7 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
       <span><i class="sw api"></i>API call or deterministic code</span>
       <span><i class="sw gate"></i>Quality gate</span>
       <span><i class="sw loop"></i>Loop back</span>
+      <span><i class="sw cached"></i>Reads the shared, cached paper list</span>
     </div>
   </header>
 
@@ -123,7 +134,7 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
       <article class="card llm">
         <div class="top"><span class="num">04 · plan_queries</span><span class="chip">LLM</span></div>
         <h2>Write search queries</h2>
-        <p class="what">Writes queries in each database's own syntax: core queries, review-paper queries, and gap probes (limitations, future research, understudied).</p>
+        <p class="what">Writes up to 4 queries per database, in each database's own syntax: core queries, review-paper queries, and gap probes (limitations, future research, understudied).</p>
         <p class="why"><b>Why:</b> reviews and gap probes surface the open problems papers state themselves.</p>
         <div class="out">Output: <code>queries</code></div>
       </article>
@@ -134,9 +145,16 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
         <p class="what">Runs queries in parallel (OpenAlex, Semantic Scholar, PubMed, Crossref), adds the most-cited works of any age, follows citations one hop, merges duplicates by DOI then title, and keeps the best-scoring 60–120 records.</p>
         <p class="why"><b>Why:</b> the model may only cite ledger records, so every reference in the report is real.</p>
         <div class="loop">↻ Back to step 04 if fewer than 15 records (max 2 rounds)</div>
-        <div class="out">Output: <code>ledger</code></div>
+        <div class="out">Output: <code>ledger</code> <code>shared paper list</code></div>
       </article>
-      <div class="spacer"></div><div class="arrow" aria-hidden="true" style="visibility:hidden">→</div>
+      <div class="arrow exit" aria-hidden="true">⇢</div>
+      <article class="card gate">
+        <div class="top"><span class="num">gate · stop_early</span><span class="chip">Gate</span></div>
+        <h2>Stop early if evidence is thin</h2>
+        <p class="what">If fewer than 8 papers remain after every search round, the run skips all later stages and writes a short report: what was found, which queries were tried, and what to try next.</p>
+        <p class="why"><b>Why:</b> no tokens are spent analysing evidence too thin to support a reliable report.</p>
+        <div class="out">Output: short <code>report.md</code></div>
+      </article>
     </div>
   </section>
 
@@ -145,16 +163,16 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
   <section class="phase">
     <div class="phase-label"><b>Analyze</b><small>What is known, and what is still open</small></div>
     <div class="row">
-      <article class="card llm">
-        <div class="top"><span class="num">06 · landscape</span><span class="chip">LLM</span></div>
+      <article class="card llm cached">
+        <div class="top"><span class="num">06 · landscape</span><span class="chip">LLM · cached</span></div>
         <h2>Map the state of the art</h2>
         <p class="what">Groups the ledger into 3–6 themes with cited claims, dominant methods and frameworks, and landmark works. Active authors and institutions are counted from metadata.</p>
         <p class="why"><b>Why:</b> grounds the state of the art in retrieved papers, not the model's memory.</p>
         <div class="out">Output: <code>landscape</code> <code>groups</code></div>
       </article>
       <div class="arrow" aria-hidden="true">→</div>
-      <article class="card llm">
-        <div class="top"><span class="num">07 · gaps</span><span class="chip">LLM</span></div>
+      <article class="card llm cached">
+        <div class="top"><span class="num">07 · gaps</span><span class="chip">LLM · cached</span></div>
         <h2>Find open problems</h2>
         <p class="what">Combines three signals: gaps papers state themselves, facet pairs with few papers (structural gaps), and conflicting findings. Each gap gets a cause and citations.</p>
         <p class="why"><b>Why:</b> directions must build on evidenced gaps, not on "more research is needed".</p>
@@ -169,8 +187,8 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
   <section class="phase">
     <div class="phase-label"><b>Propose</b><small>Generate, check for prior work, red-team</small></div>
     <div class="row">
-      <article class="card llm">
-        <div class="top"><span class="num">08 · directions</span><span class="chip">LLM</span></div>
+      <article class="card llm cached">
+        <div class="top"><span class="num">08 · directions</span><span class="chip">LLM · cached</span></div>
         <h2>Propose research directions</h2>
         <p class="what">Drafts 6–8 directions, each with a research question, cited novelty argument, closest prior work, method sketch, resources, month estimate and risk.</p>
         <p class="why"><b>Why:</b> uses the field's own idea of novelty and the researcher's context, so ideas are new and doable.</p>
@@ -180,7 +198,7 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
       <article class="card gate">
         <div class="top"><span class="num">09 · novelty_check</span><span class="chip">Gate</span></div>
         <h2>Check it isn't already done</h2>
-        <p class="what">Searches each research question directly; a judge labels it done, partly done, or open. Done directions are dropped; partly done ones must state how they differ.</p>
+        <p class="what">Searches each research question directly, then one batched call labels every direction done, partly done, or open. Done directions are dropped; partly done ones must state how they differ.</p>
         <p class="why"><b>Why:</b> the most common failure of idea generators is proposing published work.</p>
         <div class="out">Output: <code>candidates</code></div>
       </article>
@@ -188,9 +206,9 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
       <article class="card gate">
         <div class="top"><span class="num">10 · critique</span><span class="chip">Gate</span></div>
         <h2>Red-team the directions</h2>
-        <p class="what">A separate reviewer with a fresh context scores novelty, feasibility, significance and specificity (1–5): accept, revise or reject. Hard rules override it, e.g. too long for the horizon forces revise.</p>
+        <p class="what">A separate reviewer with a fresh context scores novelty, feasibility, significance and specificity (1–5): accept, revise or reject. Hard rules override it, e.g. too long for the horizon forces revise. With 3 or fewer candidates it runs at medium effort.</p>
         <p class="why"><b>Why:</b> a model grading its own ideas tends to approve them.</p>
-        <div class="loop">↻ Back to step 08 once if any direction needs revision</div>
+        <div class="loop">↻ Back to step 08 once, only if fewer than 3 directions are usable; only flagged ones are redone</div>
         <div class="out">Output: <code>critiques</code></div>
       </article>
     </div>
@@ -201,16 +219,16 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
   <section class="phase">
     <div class="phase-label"><b>Deliver</b><small>Choose, write, verify, assemble</small></div>
     <div class="row">
-      <article class="card llm">
-        <div class="top"><span class="num">11 · rank</span><span class="chip">Code + LLM</span></div>
+      <article class="card llm cached">
+        <div class="top"><span class="num">11 · rank</span><span class="chip">Code + LLM · cached</span></div>
         <h2>Rank and recommend</h2>
         <p class="what">Weights scores by career stage (MS favours feasibility, PhD novelty), penalises risk, and picks the top 1–2 with cited reasons and what would change the choice.</p>
         <p class="why"><b>Why:</b> makes trade-offs explicit and tunable.</p>
         <div class="out">Output: <code>ranked</code></div>
       </article>
       <div class="arrow" aria-hidden="true">→</div>
-      <article class="card llm">
-        <div class="top"><span class="num">12 · write</span><span class="chip">LLM</span></div>
+      <article class="card llm cached">
+        <div class="top"><span class="num">12 · write</span><span class="chip">LLM · cached</span></div>
         <h2>Write significance</h2>
         <p class="what">Scholarly, practical and societal significance as cited claims, each with a concrete anchor: a number, population, place, policy or cost.</p>
         <p class="why"><b>Why:</b> blocks generic "increasingly important" claims.</p>
@@ -220,7 +238,7 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
       <article class="card gate">
         <div class="top"><span class="num">13 · verify</span><span class="chip">Gate</span></div>
         <h2>Verify citations and claims</h2>
-        <p class="what">Removes keys not in the ledger, checks each claim against the abstracts it cites, confirms DOIs resolve to the same title, flags generic phrasing.</p>
+        <p class="what">Removes keys not in the ledger, checks claims against the abstracts they cite in batches of 40, confirms DOIs resolve to the same title, and flags generic phrasing.</p>
         <p class="why"><b>Why:</b> last defence against invented or misattributed citations.</p>
         <div class="out">Output: <code>qc</code></div>
       </article>
@@ -232,6 +250,14 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
         <p class="why"><b>Why:</b> the model never writes the reference list.</p>
         <div class="out">Output: <code>report.md</code></div>
       </article>
+    </div>
+  </section>
+
+  <section class="cap">
+    <div class="phase-label"><b>Throughout</b><small>Applies to every model call</small></div>
+    <div class="cap-body">
+      <h2>Cost cap (optional)</h2>
+      <p>Set a per-run limit with <code>max_cost_usd</code> in <code>config/rubric.yaml</code> or <code>RESEARCH_ASSISTANT_MAX_COST_USD</code>. Once the estimated spend reaches it, every later call runs one effort level lower and the revision round is skipped. Verification always runs. Token use and cost per stage are recorded in <code>qc_report.json</code>.</p>
     </div>
   </section>
 
