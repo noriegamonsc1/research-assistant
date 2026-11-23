@@ -23,3 +23,6 @@ eval/results/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Claude Code per-user settings (the shared skill in .claude/skills/ is committed)
+.claude/settings.local.json

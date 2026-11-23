@@ -19,6 +19,20 @@ Use the editable install (`-e`). Field profiles are read from `config/` next to 
 - Good first contributions that need no Python: a discipline profile in `config/fields.yaml`, or expert `must_mention` lists in `eval/topics.yaml`.
 - Generated outputs (`runs/`, `eval/results/`) stay out of git. Share a report by attaching its folder to a PR or an issue.
 
+## Run it from a Claude Code chat
+The repo includes a Claude Code skill in `.claude/skills/research-assistant/`. Open a Claude Code session in this folder (desktop Code tab or `claude` in a terminal) and type:
+```
+/research-assistant Gig-economy labor and worker well-being in Latin America; PhD, qualitative methods
+```
+Claude runs the pipeline in the background on the `claude-cli` backend (your Claude plan; Sonnet unless you ask for Opus), then summarizes:
+- any flags (stopped early, low confidence);
+- the recommended directions;
+- all candidates;
+- the key gaps;
+- the token use.
+
+It links the full report. One-time setup: the venv at `C:\venvs\research-assistant` (see Setup), or point `RESEARCH_ASSISTANT_EXE` at your own install.
+
 ## Two ways to pay for model calls
 | Backend | Set | Billing | Needs |
 |---|---|---|---|

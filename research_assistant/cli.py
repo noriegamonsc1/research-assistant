@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -41,6 +42,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--out", default="runs", help="Output root directory")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
+    for stream in (sys.stdout, sys.stderr):  # Windows pipes default to a legacy codepage; never crash on ✓
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format="%(levelname)s %(message)s")
 
     from .graph import run  # import late so --help works without API deps configured
