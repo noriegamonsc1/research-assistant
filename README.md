@@ -19,6 +19,21 @@ Use the editable install (`-e`). Field profiles are read from `config/` next to 
 - Good first contributions that need no Python: a discipline profile in `config/fields.yaml`, or expert `must_mention` lists in `eval/topics.yaml`.
 - Generated outputs (`runs/`, `eval/results/`) stay out of git. Share a report by attaching its folder to a PR or an issue.
 
+## Two ways to pay for model calls
+| Backend | Set | Billing | Needs |
+|---|---|---|---|
+| `api` (default) | nothing | Console API credit (prepaid) | `ANTHROPIC_API_KEY` |
+| `claude-cli` | `RESEARCH_ASSISTANT_BACKEND=claude-cli` | Your Claude plan's usage limits | Claude Code installed and logged in |
+
+With `claude-cli`, each model call runs `claude -p` with tools off, the stage's system prompt (through a file) and the JSON schema. Pick the model with `RESEARCH_ASSISTANT_CLI_MODEL` (`opus` by default; `sonnet`, `haiku`, or a full model name also work). Token use is still recorded in `qc_report.json`. Its cost figure is Claude Code's API-equivalent estimate, not a charge.
+
+The per-message effort change and server-side fallbacks are API-only. The gates, the cost cap and the shared paper list all still apply.
+
+```bash
+$env:RESEARCH_ASSISTANT_BACKEND="claude-cli"; $env:CONTACT_EMAIL="you@example.edu"
+research-assistant "Microplastic accumulation in freshwater fish; MS thesis, 1 year, field sampling access."
+```
+
 ## Run
 ```bash
 python -m research_assistant.cli "Microplastic accumulation in freshwater fish; MS thesis, 1 year, field sampling access."

@@ -362,3 +362,73 @@ def test_cost_cap_steps_down_effort_and_skips_revision(monkeypatch):
 def test_no_cap_by_default(monkeypatch):
     monkeypatch.delenv("RESEARCH_ASSISTANT_MAX_COST_USD", raising=False)
     assert llm.cost_cap() is None and not llm.over_budget()
+
+
+# ------------------------------------------------------- claude-cli backend --
+
+from research_assistant.schemas import Intake  # noqa: E402
+
+CLI_OK = {
+    "type": "result", "subtype": "success", "is_error": False,
+    "result": "", "structured_output": {
+        "topic_core": "Microplastics in freshwater fish", "field_hint": None,
+        "context": {"stage": "MS", "horizon_months": 12, "resources": ["field access"], "methods": [], "constraints": []}},
+    "total_cost_usd": 0.0123,
+    "modelUsage": {"claude-opus-5-5": {"inputTokens": 100, "outputTokens": 50, "cacheReadInputTokens": 900,
+                                       "cacheCreationInputTokens": 0, "costUSD": 0.0123}},
+}
+
+
+def test_cli_command_has_no_tools_and_uses_a_prompt_file():
+    cmd = llm.build_cli_command("claude", "C:/tmp/system.txt", Intake, effort="high", bulk=False)
+    assert cmd[:2] == ["claude", "-p"]
+    assert cmd[cmd.index("--tools") + 1] == ""
+    assert cmd[cmd.index("--system-prompt-file") + 1] == "C:/tmp/system.txt"
+    assert cmd[cmd.index("--effort") + 1] == "high" and cmd[cmd.index("--model") + 1] == llm.CLI_MODEL
+    assert json.loads(cmd[cmd.index("--json-schema") + 1])["title"] == "Intake"
+    assert "--no-session-persistence" in cmd
+
+
+def test_cli_parse_and_usage():
+    llm.reset_usage()
+    parsed, env = llm.parse_cli_output(json.dumps(CLI_OK), Intake, "intake")
+    assert parsed.context.horizon_months == 12
+    llm.record_cli_usage("intake", env)
+    tot = llm.usage_report()["total"]
+    assert tot["calls"] == 1 and tot["cache_read_tokens"] == 900 and tot["est_cost_usd"] == pytest.approx(0.0123)
+    llm.reset_usage()
+
+
+def test_cli_falls_back_to_text_result():
+    env = {**CLI_OK, "structured_output": None, "result": json.dumps(CLI_OK["structured_output"])}
+    parsed, _ = llm.parse_cli_output(json.dumps(env), Intake, "intake")
+    assert parsed.topic_core.startswith("Microplastics")
+
+
+@pytest.mark.parametrize("stdout", [
+    "not json",
+    json.dumps({**CLI_OK, "is_error": True, "subtype": "error_during_execution", "result": "auth failed"}),
+])
+def test_cli_errors_are_clear(stdout):
+    with pytest.raises(RuntimeError, match="claude CLI"):
+        llm.parse_cli_output(stdout, Intake, "intake")
+
+
+def test_ask_routes_to_cli_with_shared_digest_first(monkeypatch):
+    seen = {}
+
+    def fake_run(cmd, input, **kw):
+        seen["system"] = open(cmd[cmd.index("--system-prompt-file") + 1], encoding="utf-8").read()
+        seen["user"], seen["cwd"] = input, kw["cwd"]
+        return type("P", (), {"returncode": 0, "stdout": json.dumps(CLI_OK), "stderr": ""})()
+
+    monkeypatch.setattr(llm, "BACKEND", "claude-cli")
+    monkeypatch.setattr(llm, "claude_bin", lambda: "claude")
+    monkeypatch.setattr(llm.subprocess, "run", fake_run)
+    llm.reset_usage()
+    out = llm.ask("STAGE RULES", "the topic", Intake, stage="intake", effort="low", shared_context="LEDGER...")
+    assert out.context.stage == "MS"
+    assert seen["system"].startswith("LEDGER...") and seen["system"].endswith("STAGE RULES")
+    assert seen["user"] == "the topic"
+    assert llm.usage_report()["backend"] == "claude-cli"
+    llm.reset_usage()
