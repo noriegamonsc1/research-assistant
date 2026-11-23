@@ -29,7 +29,9 @@ from .sources import REGISTRY, openalex, semanticscholar
 from .state import State
 
 log = logging.getLogger("research_assistant")
-MAX_QUERIES_PER_SOURCE = 6
+MAX_QUERIES_PER_SOURCE = 4
+MIN_USABLE = 3            # revise only if fewer directions than this are usable after critique
+CRITIC_ABSTRACT_CHARS = 200
 MAX_RETRIEVAL_ROUNDS = 2
 RISK_LEVEL = {"low": 0, "medium": 1, "high": 2}
 SHARED_RECORDS = 60       # papers in the shared, cached digest
@@ -125,7 +127,7 @@ def plan_queries(s: State) -> dict:
     plan = ask(
         P.PLAN.format(sources=", ".join(prof["sources"]), mesh_hint=mesh, retry_hint=retry),
         f"Topic: {s['topic']}\nFacets: {facets.model_dump_json()}",
-        QueryPlan, stage="plan_queries", effort="medium",
+        QueryPlan, stage="plan_queries", effort="low",
     )
     per_source: dict[str, int] = {}
     queries = []
@@ -309,6 +311,22 @@ def novelty_check(s: State) -> dict:
     return {"candidates": candidates, "ledger": ledger, "novelty_cache": cache, "notes": notes}
 
 
+def critic_view(i: int, d, nv) -> dict:
+    """Only the fields the critic scores, in compact form (no schema noise, claims as 'text [keys]')."""
+    return {
+        "index": i,
+        "title": d.title,
+        "rq": d.research_question,
+        "novelty_argument": [f"{c.text} [{', '.join(c.cites)}]" for c in d.novelty_argument],
+        "closest_prior_work": d.closest_prior_work,
+        "method": d.method_sketch,
+        "resources": d.resources_needed,
+        "months": d.est_months,
+        "risk": f"{d.risk}: {d.risk_notes}",
+        "novelty_check": {"status": nv.status, "overlap": nv.overlap_keys, "difference": nv.difference},
+    }
+
+
 def critique(s: State) -> dict:
     """Independent critic. In a revision round only new or changed directions are sent; accepted ones keep their scores."""
     rub = rubric_cfg()
@@ -318,15 +336,15 @@ def critique(s: State) -> dict:
     new: dict = {}
     if todo:
         criteria = "; ".join(f"{k}: {v}" for k, v in rub["direction_criteria"].items())
-        items = [{"index": i, **cands[i]["direction"].model_dump(), "novelty_check": cands[i]["novelty"].model_dump()}
-                 for i in todo]
+        items = [critic_view(i, cands[i]["direction"], cands[i]["novelty"]) for i in todo]
         cited = list(dict.fromkeys(
             k for i in todo for k in cands[i]["direction"].closest_prior_work + cands[i]["novelty"].overlap_keys
             if k in s["ledger"]))
         out = ask(
             P.CRITIC.format(field=_field_label(s), criteria=criteria, context=_ctx(s),
                             banned=", ".join(f'"{b}"' for b in rub["banned_phrases"][:4])),
-            f"DIRECTIONS:\n{json.dumps(items)}\n\nCITED RECORDS:\n{digest(s['ledger'], cited, 400)}",
+            f"DIRECTIONS:\n{json.dumps(items, separators=(',', ':'))}\n\n"
+            f"CITED RECORDS:\n{digest(s['ledger'], cited, CRITIC_ABSTRACT_CHARS)}",
             Critiques, stage="critique", effort="high",
         )
         horizon = s["context"].horizon_months
@@ -348,10 +366,17 @@ def critique(s: State) -> dict:
     return {"critiques": critiques}
 
 
+def is_usable(c) -> bool:
+    """Accepted, or a 'revise' that is already solid on the two criteria that matter most."""
+    return c.verdict == "accept" or (c.verdict == "revise" and min(c.novelty, c.feasibility) >= 3)
+
+
 def needs_revision(s: State) -> str:
+    """Run the (expensive) revision round only when too few directions are usable."""
     if s.get("revisions", 0) >= 1:
         return "done"
-    return "revise" if any(c.verdict != "accept" for c in s["critiques"]) else "done"
+    usable = [c for c in s["critiques"] if is_usable(c)]
+    return "revise" if len(usable) < MIN_USABLE else "done"
 
 
 def rank(s: State) -> dict:

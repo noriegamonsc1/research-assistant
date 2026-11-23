@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 
 import pytest
@@ -100,7 +101,7 @@ def all_supported(system, user, schema, **kw):
     """Fake batched entailment: every claim id in the prompt is 'supported'."""
     import re
     ids = [int(m) for m in re.findall(r"^(\d+)\. ", user.split("EVIDENCE:")[0], re.M)]
-    return schema(verdicts=[{"id": i, "verdict": "supported", "reason": ""} for i in ids])
+    return schema(verdicts=[{"id": i, "verdict": "supported"} for i in ids])
 
 
 def make_state():
@@ -276,3 +277,42 @@ def test_novelty_is_one_batched_call(monkeypatch):
     s.update(out)
     nodes.novelty_check(s)
     assert len(calls) == 1
+
+
+# ------------------------------------------------- low-risk token bundle --
+
+def _crit(i, verdict, novelty=3, feasibility=3):
+    return DirectionCritique(index=i, verdict=verdict, novelty=novelty, feasibility=feasibility,
+                             significance=3, specificity=3, notes="")
+
+
+@pytest.mark.parametrize("verdicts,expect", [
+    ([("accept", 3, 3)] * 3, "done"),                                         # enough accepted
+    ([("accept", 3, 3), ("revise", 4, 3), ("revise", 3, 4)], "done"),         # solid revises count as usable
+    ([("accept", 3, 3), ("revise", 2, 4), ("reject", 1, 1)], "revise"),       # only 1 usable
+    ([("revise", 3, 3)] * 2, "revise"),                                        # fewer than 3 total
+])
+def test_revision_gate(verdicts, expect):
+    s = {"revisions": 0, "critiques": [_crit(i, v, n, f) for i, (v, n, f) in enumerate(verdicts)]}
+    assert nodes.needs_revision(s) == expect
+
+
+def test_revision_gate_runs_at_most_once():
+    s = {"revisions": 1, "critiques": [_crit(0, "reject")]}
+    assert nodes.needs_revision(s) == "done"
+
+
+def test_critic_view_is_compact_but_complete():
+    d = make_state()["ranked"][0]["direction"]
+    nv = NoveltyVerdict(status="partial", overlap_keys=["W1"], difference="new region")
+    view = nodes.critic_view(0, d, nv)
+    full = {**d.model_dump(), "novelty_check": nv.model_dump()}
+    assert len(json.dumps(view, separators=(",", ":"))) < len(json.dumps(full))
+    assert view["months"] == d.est_months and view["rq"] == d.research_question
+    assert view["novelty_argument"][0].endswith("[W1, FAKE123]")  # cites kept so the critic can check them
+    assert view["novelty_check"]["difference"] == "new region"
+
+
+def test_unused_output_fields_removed():
+    from research_assistant.schemas import Entailment, FieldGuess
+    assert "reason" not in Entailment.model_fields and "rationale" not in FieldGuess.model_fields

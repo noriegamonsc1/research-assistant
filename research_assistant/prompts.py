@@ -30,7 +30,7 @@ Allowed sources: {sources}. Source syntax:
 - semanticscholar: plain keywords, 3-8 words.
 - pubmed: boolean with field tags, e.g. ("microplastics"[MeSH] OR microplastic*) AND fish*[tiab]. {mesh_hint}
 - crossref: plain keywords/bibliographic phrase.
-Produce 3-6 queries per source mixing purposes:
+Produce 3-4 queries per source mixing purposes:
 - core: the main facet combinations
 - review: same scope + "review" / "systematic review" / "meta-analysis" / "scoping review"
 - gap_probe: + "limitations" / "future research" / "remains unclear" / "understudied"
@@ -83,7 +83,7 @@ given the novelty-check verdict. Verdicts:
 - accept: ready as is
 - revise: fixable; give concrete instructions
 - reject: infeasible, already done, or not meaningfully novel
-Be calibrated: most first drafts deserve at least one 'revise'."""
+Use 'revise' only when a specific, stated fix would raise a score; otherwise accept or reject."""
 
 RECOMMEND = f"""You are the researcher's advisor. From the RANKED directions, choose the top 1-2 and explain
 why, given the researcher's context, in 2-4 cited claims; then say what new information would change the
@@ -102,7 +102,7 @@ Judge a claim only against the works listed in its own `cites`, not other eviden
 - supported: the cited evidence states or directly implies the claim.
 - partial: it supports part of the claim, or a weaker/hedged version.
 - unsupported: it does not support the claim or contradicts it.
-Return one verdict per claim id, with a reason of at most one short sentence."""
+Return one verdict per claim id."""
 
 SHARED_HEADER = """You are part of a research-direction pipeline. The LEDGER below lists the only sources that may
 be cited, one per entry, with its key in square brackets. Stage-specific instructions follow it.

@@ -61,7 +61,7 @@ Before trusting `landscape_recall`, fill in `must_mention` in `eval/topics.yaml`
 ## Token use
 Every run records tokens and an estimated cost per stage in `qc_report.json` → `token_usage`. The CLI also prints the totals.
 - **Shared, cached paper list.** `retrieve` builds one digest of the top 60 papers. Landscape, gaps, directions, rank and write all get it as the same cached system block, so after the first stage it is read from the prompt cache. Confirm `cache_read_tokens` is non-zero for those stages after a real run.
-- **Effort.** `low` for intake, decompose and field detection. `medium` for query planning, landscape, gaps, rank, write and novelty. `high` only for directions and critique. Calls that share the cache keep one top-level effort and switch effort with a per-message setting, which leaves the cache intact.
+- **Effort.** `low` for intake, decompose, field detection and query planning. `medium` for landscape, gaps, rank, write and novelty. `high` only for directions and critique. Calls that share the cache keep one top-level effort and switch effort with a per-message setting, which leaves the cache intact.
 - **Batched checks.** Novelty judging is one call for all directions. Claim verification checks up to 40 claims per call and sends each cited abstract once.
 - **Targeted revision.** A revision round regenerates and re-critiques only the directions the critic flagged.
 

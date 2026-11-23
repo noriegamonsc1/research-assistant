@@ -65,7 +65,6 @@ class Facets(BaseModel):
 class FieldGuess(BaseModel):
     primary: str = Field(description="Exactly one name from the allowed OpenAlex field list")
     secondary: list[str] = Field(description="0-2 further names from the allowed list if interdisciplinary")
-    rationale: str
 
 
 class Query(BaseModel):
@@ -167,7 +166,6 @@ class ReportDraft(BaseModel):
 class Entailment(BaseModel):
     id: int = Field(description="Claim id as given")
     verdict: Literal["supported", "partial", "unsupported"]
-    reason: str = Field(description="At most one short sentence")
 
 
 class EntailBatch(BaseModel):
