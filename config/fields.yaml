@@ -1,0 +1,91 @@
+# Field profiles. Adding a discipline = adding a profile here (no code changes).
+# `openalex_fields` maps OpenAlex's 26 top-level fields onto a profile; every one of
+# the 26 should appear in exactly one profile so detection always resolves.
+#
+# Keys (all optional except openalex_fields; missing keys fall back to `defaults`):
+#   sources              adapters to query: openalex | semanticscholar | pubmed | crossref
+#   recency_years        main search window
+#   preprints            accept | flag | accept_working_papers | rare
+#   query_style          keyword | mesh   (mesh -> PubMed queries use MeSH terms)
+#   evidence             what counts as strong evidence, strongest first
+#   novelty              what counts as a novel contribution
+#   venues               ranking hints only, never filters
+#   low_digital_coverage adds a coverage caveat + offline-source suggestions to the report
+#   landmark_any_age     seminal works bypass the recency penalty
+
+defaults:
+  recency_years: 5
+  max_records: 100
+  per_query: 25
+  sources: [openalex, crossref]
+  preprints: flag
+  query_style: keyword
+  evidence: ["peer-reviewed empirical studies", "systematic reviews"]
+  novelty: ["new context", "new method", "new data"]
+  venues: []
+  low_digital_coverage: false
+  landmark_any_age: false
+
+profiles:
+  computer_science:
+    openalex_fields: ["Computer Science", "Mathematics", "Decision Sciences"]
+    sources: [semanticscholar, openalex]
+    recency_years: 3
+    preprints: accept
+    evidence: ["benchmarks on standard datasets", "ablations", "open code/data", "independent replication"]
+    novelty: ["new method or task formulation", "new benchmark or dataset", "new setting/population", "negative result on a popular method"]
+    venues: ["NeurIPS", "ICML", "ICLR", "ACL", "EMNLP", "CHI", "AAAI", "KDD"]
+
+  engineering_physical:
+    openalex_fields: ["Engineering", "Physics and Astronomy", "Chemistry", "Chemical Engineering", "Materials Science", "Energy"]
+    sources: [openalex, semanticscholar, crossref]
+    recency_years: 5
+    preprints: accept
+    evidence: ["controlled experiments", "validated simulation", "field/pilot deployment", "reproducible measurements"]
+    novelty: ["new material/device/process", "performance beyond state of the art", "new operating regime", "scale-up or cost reduction"]
+
+  life_environmental:
+    openalex_fields: ["Environmental Science", "Agricultural and Biological Sciences", "Earth and Planetary Sciences", "Veterinary"]
+    sources: [openalex, pubmed, crossref]
+    recency_years: 6
+    preprints: flag
+    evidence: ["field sampling with replication", "controlled exposure experiments", "long-term monitoring", "meta-analysis"]
+    novelty: ["understudied ecosystem/species/region", "new exposure pathway or mechanism", "trophic or food-web transfer", "methodological standardization"]
+
+  biomedicine:
+    openalex_fields: ["Medicine", "Biochemistry, Genetics and Molecular Biology", "Immunology and Microbiology", "Neuroscience", "Pharmacology, Toxicology and Pharmaceutics", "Nursing", "Dentistry", "Health Professions"]
+    sources: [pubmed, openalex]
+    recency_years: 5
+    preprints: flag
+    query_style: mesh
+    evidence: ["systematic review/meta-analysis", "RCT", "cohort", "case-control", "case series"]
+    novelty: ["new population/exposure/outcome", "stronger study design", "mechanism", "implementation in real-world settings"]
+    venues: ["NEJM", "The Lancet", "JAMA", "BMJ"]
+
+  social_sciences:
+    openalex_fields: ["Social Sciences", "Psychology", "Economics, Econometrics and Finance"]
+    sources: [openalex, crossref]
+    recency_years: 7
+    preprints: accept_working_papers
+    evidence: ["credible identification strategy", "representative samples", "qualitative rigor (saturation, reflexivity, triangulation)", "pre-registration"]
+    novelty: ["new context or population (esp. Global South)", "new data source", "theory test or extension", "better identification"]
+    venues: ["American Sociological Review", "American Journal of Sociology", "APSR", "AER", "Work, Employment and Society"]
+
+  humanities:
+    openalex_fields: ["Arts and Humanities"]
+    sources: [openalex, crossref]
+    recency_years: 20
+    preprints: rare
+    low_digital_coverage: true
+    landmark_any_age: true
+    evidence: ["primary/archival sources", "close reading", "historiographic positioning", "comparative analysis"]
+    novelty: ["new source or corpus", "reinterpretation of established works", "framework applied to understudied material", "recovery of marginalized voices"]
+
+  business:
+    openalex_fields: ["Business, Management and Accounting"]
+    sources: [openalex, crossref]
+    recency_years: 6
+    preprints: accept_working_papers
+    evidence: ["field/firm data", "causal designs (natural experiments, DiD)", "multi-case studies", "surveys with validated scales"]
+    novelty: ["new industry/context", "mechanism", "managerial or policy implication", "new data source"]
+    venues: ["Academy of Management Journal", "Strategic Management Journal", "Management Science", "Journal of Operations Management"]

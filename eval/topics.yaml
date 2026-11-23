@@ -1,0 +1,27 @@
+# Cross-field test set. `must_mention` = expert-supplied items (groups, works, frameworks)
+# used for landscape recall; fill these in with a domain expert before trusting the metric.
+topics:
+  - id: env-microplastics
+    domain: life_environmental
+    input: "Microplastic accumulation in freshwater fish; MS thesis, 1 year, field sampling access."
+    must_mention: []
+  - id: soc-gig-latam
+    domain: social_sciences
+    input: "Gig-economy labor and worker well-being in Latin America; PhD, qualitative methods."
+    must_mention: []
+  - id: cs-llm-tutoring
+    domain: computer_science
+    input: "LLM-based tutoring for introductory statistics; 6-month project, classroom access."
+    must_mention: []
+  - id: hum-bolano
+    domain: humanities
+    input: "Reception of Roberto Bolaño in Anglophone literary criticism; PhD, archival access, Spanish reading."
+    must_mention: []
+  - id: bus-3pl-resilience
+    domain: business
+    input: "Supply-chain resilience strategies of small third-party logistics providers after 2020; MBA capstone, 4 months, access to one company's shipment data."
+    must_mention: []
+  - id: bio-long-covid-exercise
+    domain: biomedicine
+    input: "Exercise-based rehabilitation for long COVID fatigue; MPH thesis, 12 months, clinic partnership, no trial funding."
+    must_mention: []

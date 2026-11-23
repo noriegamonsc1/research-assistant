@@ -1,0 +1,44 @@
+# Field-neutral rubric used by the Critic (per direction) and by eval/run_eval.py (per report).
+
+direction_criteria:
+  novelty: "Not already done; novel by the field's own standard of novelty."
+  feasibility: "Doable within the stated time, resources, access and methods expertise."
+  significance: "Concrete scholarly/practical/societal payoff, anchored in cited evidence."
+  specificity: "Answerable research question with a concrete method sketch; no generic filler."
+
+report_criteria:
+  citation_integrity: "All references exist, are correctly attributed, and support their claims."
+  significance_specificity: "Importance claims are concrete (numbers, populations, places, policies) and sourced."
+  landscape_coverage: "Key groups, landmark works and dominant methods/frameworks an expert would expect."
+  gap_validity: "Gaps are real, current, and explained (why unsolved)."
+  direction_novelty: "Directions are not already done and the novelty argument fits the field."
+  feasibility_fit: "Directions match the stated time, resources and skills."
+  actionability: "Research questions are answerable; method sketches could seed a proposal."
+  calibration: "Risk levels and caveats (incl. literature coverage) are honest."
+
+# Ranking weights by career stage (keys matched case-insensitively as substrings of context.stage).
+stage_weights:
+  undergrad: {novelty: 0.15, feasibility: 0.45, significance: 0.2, specificity: 0.2, risk_penalty: 0.6}
+  ms:        {novelty: 0.2,  feasibility: 0.4,  significance: 0.2, specificity: 0.2, risk_penalty: 0.5}
+  master:    {novelty: 0.2,  feasibility: 0.4,  significance: 0.2, specificity: 0.2, risk_penalty: 0.5}
+  mba:       {novelty: 0.15, feasibility: 0.4,  significance: 0.3, specificity: 0.15, risk_penalty: 0.5}
+  phd:       {novelty: 0.35, feasibility: 0.25, significance: 0.25, specificity: 0.15, risk_penalty: 0.25}
+  postdoc:   {novelty: 0.4,  feasibility: 0.2,  significance: 0.25, specificity: 0.15, risk_penalty: 0.2}
+  faculty:   {novelty: 0.4,  feasibility: 0.2,  significance: 0.3, specificity: 0.1, risk_penalty: 0.15}
+  default:   {novelty: 0.3,  feasibility: 0.3,  significance: 0.25, specificity: 0.15, risk_penalty: 0.35}
+
+# Phrases that signal generic importance claims; flagged in qc_report and fed to the Critic.
+banned_phrases:
+  - "growing interest"
+  - "plays a crucial role"
+  - "plays a vital role"
+  - "paradigm shift"
+  - "in today's world"
+  - "increasingly important"
+  - "has garnered significant attention"
+  - "a hot topic"
+
+qc_thresholds:
+  max_unsupported_claim_rate: 0.10
+  min_doi_match_rate: 0.95
+  min_ledger_size: 15

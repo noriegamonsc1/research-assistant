@@ -1,0 +1,244 @@
+<title>Research Assistant Pipeline</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one figure; five phase bands top-to-bottom, stage cards flow left-to-right inside each band. */
+:root{
+  --bg:#f6f8f8; --paper:#ffffff; --ink:#15211f; --muted:#5a6866; --line:#d5dedc;
+  --llm:#0f6e56; --llm-bg:#e1f5ee; --api:#534ab7; --api-bg:#eeedfe; --gate:#993c1d; --gate-bg:#faece7;
+  --loop:#854f0b; --loop-bg:#faeeda;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1514; --paper:#172120; --ink:#e6eeec; --muted:#9db0ac; --line:#2a3836;
+  --llm:#5dcaa5; --llm-bg:#0d3a2f; --api:#afa9ec; --api-bg:#2a2560; --gate:#f0997b; --gate-bg:#4a1b0c;
+  --loop:#fac775; --loop-bg:#412402; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1514; --paper:#172120; --ink:#e6eeec; --muted:#9db0ac; --line:#2a3836;
+  --llm:#5dcaa5; --llm-bg:#0d3a2f; --api:#afa9ec; --api-bg:#2a2560; --gate:#f0997b; --gate-bg:#4a1b0c;
+  --loop:#fac775; --loop-bg:#412402; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px 56px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:28px}
+header{display:grid;gap:10px;max-width:780px}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 clamp(28px,4vw,40px)/1.1 var(--display);margin:0;text-wrap:balance}
+.lede{margin:0;color:var(--muted);font-size:16px;max-width:68ch}
+.principle{display:inline-flex;gap:10px;align-items:baseline;flex-wrap:wrap;border-left:3px solid var(--llm);padding:4px 0 4px 12px;font:500 15px var(--body)}
+.principle em{font-style:normal;color:var(--muted);font-weight:400}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.sw{width:12px;height:12px;border-radius:3px;border:1.5px solid}
+.sw.llm{background:var(--llm-bg);border-color:var(--llm)} .sw.api{background:var(--api-bg);border-color:var(--api)}
+.sw.gate{background:var(--gate-bg);border-color:var(--gate)} .sw.loop{background:var(--loop-bg);border-color:var(--loop)}
+.io{display:grid;grid-template-columns:110px 1fr;gap:16px;align-items:start;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.io h3{margin:0;font:600 14px var(--display);letter-spacing:.02em}
+.io p{margin:0;min-width:0}
+.io code,.out code{font:12.5px var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.phase{display:grid;grid-template-columns:110px 1fr;gap:16px;align-items:stretch}
+.phase-label{display:grid;align-content:start;gap:4px;padding-top:6px}
+.phase-label b{font:600 16px var(--display)}
+.phase-label small{color:var(--muted);font-size:12.5px;line-height:1.4}
+.row{display:flex;align-items:stretch;gap:0;min-width:0}
+.arrow{flex:0 0 26px;display:grid;place-items:center;color:var(--muted);font-size:18px}
+.card{flex:1 1 0;min-width:0;background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--c);border-radius:0 0 10px 10px;padding:14px 16px 16px;display:grid;gap:8px;align-content:start}
+.card.llm{--c:var(--llm);--cb:var(--llm-bg)} .card.api{--c:var(--api);--cb:var(--api-bg)} .card.gate{--c:var(--gate);--cb:var(--gate-bg)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.num{font:500 12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.chip{font:500 11px var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--c);background:var(--cb);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.card h2{font:600 17px/1.25 var(--display);margin:0;text-wrap:balance}
+.card p{margin:0;font-size:13.5px;line-height:1.5}
+.card .why{color:var(--muted)}
+.card .why b,.card .what b{font-weight:600;color:var(--ink)}
+.out{font-size:12.5px;color:var(--muted)}
+.loop{font-size:12.5px;line-height:1.45;color:var(--loop);background:var(--loop-bg);border-radius:6px;padding:6px 9px}
+.down{display:grid;grid-template-columns:110px 1fr;gap:16px;margin:-14px 0}
+.down span{color:var(--muted);font-size:18px;line-height:1;padding-left:34px}
+.spacer{flex:1 1 0}
+footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:900px){
+  .phase,.io,.down{grid-template-columns:1fr}
+  .row{flex-direction:column}
+  .arrow{flex-basis:22px;transform:rotate(90deg)}
+  .spacer{display:none}
+  .down span{padding-left:0}
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Agent architecture · 14 stages · 2 bounded loops</div>
+    <h1>Research Assistant: from a research topic to recommended directions</h1>
+    <p class="lede">A domain-agnostic agent for early-stage research planning. It detects the discipline, searches that field's literature, finds open problems, proposes concrete directions, and checks every claim and citation before writing the report.</p>
+    <div class="principle">The LLM reasons, the APIs remember. <em>Every reference comes from a database record retrieved in the run; the model may only cite those records.</em></div>
+    <div class="legend" aria-label="Legend">
+      <span><i class="sw llm"></i>LLM step</span>
+      <span><i class="sw api"></i>API call or deterministic code</span>
+      <span><i class="sw gate"></i>Quality gate</span>
+      <span><i class="sw loop"></i>Loop back</span>
+    </div>
+  </header>
+
+  <section class="io">
+    <h3>Input</h3>
+    <p><b>Research topic</b> (1–3 sentences, required), plus optional <b>field</b> and <b>researcher context</b>: career stage, time horizon, resources, methods expertise. Example: <code>Microplastic accumulation in freshwater fish; MS thesis, 1 year, field sampling access.</code></p>
+  </section>
+
+  <section class="phase">
+    <div class="phase-label"><b>Understand</b><small>What is being asked, by whom, in which field</small></div>
+    <div class="row">
+      <article class="card llm">
+        <div class="top"><span class="num">01 · intake</span><span class="chip">LLM</span></div>
+        <h2>Read the request</h2>
+        <p class="what">Splits the input into the topic itself and the researcher's context: career stage, months available, resources, methods.</p>
+        <p class="why"><b>Why:</b> feasibility is judged against this context later. Anything not stated stays empty instead of being guessed.</p>
+        <div class="out">Output: <code>topic</code> <code>context</code></div>
+      </article>
+      <div class="arrow" aria-hidden="true">→</div>
+      <article class="card llm">
+        <div class="top"><span class="num">02 · decompose</span><span class="chip">LLM</span></div>
+        <h2>Break the topic into facets</h2>
+        <p class="what">Splits the topic into 3–6 searchable parts (population, phenomenon, method, context) with synonyms, field vocabulary, MeSH terms, and non-English terms for regional topics.</p>
+        <p class="why"><b>Why:</b> a single literal query misses most of a literature. Facets also feed the gap matrix.</p>
+        <div class="out">Output: <code>facets</code></div>
+      </article>
+      <div class="arrow" aria-hidden="true">→</div>
+      <article class="card llm">
+        <div class="top"><span class="num">03 · detect_field</span><span class="chip">LLM + API</span></div>
+        <h2>Work out the discipline</h2>
+        <p class="what">The LLM picks an OpenAlex field; the agent checks it against where matching papers are actually indexed. If no field holds 40%, profiles are merged as interdisciplinary.</p>
+        <p class="why"><b>Why:</b> the field profile sets which databases to search, how many years back, and what counts as evidence and novelty.</p>
+        <div class="out">Output: <code>fields</code> <code>profile</code></div>
+      </article>
+    </div>
+  </section>
+
+  <div class="down" aria-hidden="true"><i></i><span>↓</span></div>
+
+  <section class="phase">
+    <div class="phase-label"><b>Gather</b><small>Build the Evidence Ledger: the only citable sources</small></div>
+    <div class="row">
+      <article class="card llm">
+        <div class="top"><span class="num">04 · plan_queries</span><span class="chip">LLM</span></div>
+        <h2>Write search queries</h2>
+        <p class="what">Writes queries in each database's own syntax: core queries, review-paper queries, and gap probes (limitations, future research, understudied).</p>
+        <p class="why"><b>Why:</b> reviews and gap probes surface the open problems papers state themselves.</p>
+        <div class="out">Output: <code>queries</code></div>
+      </article>
+      <div class="arrow" aria-hidden="true">→</div>
+      <article class="card api">
+        <div class="top"><span class="num">05 · retrieve</span><span class="chip">API</span></div>
+        <h2>Search and build the ledger</h2>
+        <p class="what">Runs queries in parallel (OpenAlex, Semantic Scholar, PubMed, Crossref), adds the most-cited works of any age, follows citations one hop, merges duplicates by DOI then title, and keeps the best-scoring 60–120 records.</p>
+        <p class="why"><b>Why:</b> the model may only cite ledger records, so every reference in the report is real.</p>
+        <div class="loop">↻ Back to step 04 if fewer than 15 records (max 2 rounds)</div>
+        <div class="out">Output: <code>ledger</code></div>
+      </article>
+      <div class="spacer"></div><div class="arrow" aria-hidden="true" style="visibility:hidden">→</div>
+    </div>
+  </section>
+
+  <div class="down" aria-hidden="true"><i></i><span>↓</span></div>
+
+  <section class="phase">
+    <div class="phase-label"><b>Analyze</b><small>What is known, and what is still open</small></div>
+    <div class="row">
+      <article class="card llm">
+        <div class="top"><span class="num">06 · landscape</span><span class="chip">LLM</span></div>
+        <h2>Map the state of the art</h2>
+        <p class="what">Groups the ledger into 3–6 themes with cited claims, dominant methods and frameworks, and landmark works. Active authors and institutions are counted from metadata.</p>
+        <p class="why"><b>Why:</b> grounds the state of the art in retrieved papers, not the model's memory.</p>
+        <div class="out">Output: <code>landscape</code> <code>groups</code></div>
+      </article>
+      <div class="arrow" aria-hidden="true">→</div>
+      <article class="card llm">
+        <div class="top"><span class="num">07 · gaps</span><span class="chip">LLM</span></div>
+        <h2>Find open problems</h2>
+        <p class="what">Combines three signals: gaps papers state themselves, facet pairs with few papers (structural gaps), and conflicting findings. Each gap gets a cause and citations.</p>
+        <p class="why"><b>Why:</b> directions must build on evidenced gaps, not on "more research is needed".</p>
+        <div class="out">Output: <code>gaps</code></div>
+      </article>
+      <div class="spacer"></div><div class="arrow" aria-hidden="true" style="visibility:hidden">→</div>
+    </div>
+  </section>
+
+  <div class="down" aria-hidden="true"><i></i><span>↓</span></div>
+
+  <section class="phase">
+    <div class="phase-label"><b>Propose</b><small>Generate, check for prior work, red-team</small></div>
+    <div class="row">
+      <article class="card llm">
+        <div class="top"><span class="num">08 · directions</span><span class="chip">LLM</span></div>
+        <h2>Propose research directions</h2>
+        <p class="what">Drafts 6–8 directions, each with a research question, cited novelty argument, closest prior work, method sketch, resources, month estimate and risk.</p>
+        <p class="why"><b>Why:</b> uses the field's own idea of novelty and the researcher's context, so ideas are new and doable.</p>
+        <div class="out">Output: <code>raw_directions</code></div>
+      </article>
+      <div class="arrow" aria-hidden="true">→</div>
+      <article class="card gate">
+        <div class="top"><span class="num">09 · novelty_check</span><span class="chip">Gate</span></div>
+        <h2>Check it isn't already done</h2>
+        <p class="what">Searches each research question directly; a judge labels it done, partly done, or open. Done directions are dropped; partly done ones must state how they differ.</p>
+        <p class="why"><b>Why:</b> the most common failure of idea generators is proposing published work.</p>
+        <div class="out">Output: <code>candidates</code></div>
+      </article>
+      <div class="arrow" aria-hidden="true">→</div>
+      <article class="card gate">
+        <div class="top"><span class="num">10 · critique</span><span class="chip">Gate</span></div>
+        <h2>Red-team the directions</h2>
+        <p class="what">A separate reviewer with a fresh context scores novelty, feasibility, significance and specificity (1–5): accept, revise or reject. Hard rules override it, e.g. too long for the horizon forces revise.</p>
+        <p class="why"><b>Why:</b> a model grading its own ideas tends to approve them.</p>
+        <div class="loop">↻ Back to step 08 once if any direction needs revision</div>
+        <div class="out">Output: <code>critiques</code></div>
+      </article>
+    </div>
+  </section>
+
+  <div class="down" aria-hidden="true"><i></i><span>↓</span></div>
+
+  <section class="phase">
+    <div class="phase-label"><b>Deliver</b><small>Choose, write, verify, assemble</small></div>
+    <div class="row">
+      <article class="card llm">
+        <div class="top"><span class="num">11 · rank</span><span class="chip">Code + LLM</span></div>
+        <h2>Rank and recommend</h2>
+        <p class="what">Weights scores by career stage (MS favours feasibility, PhD novelty), penalises risk, and picks the top 1–2 with cited reasons and what would change the choice.</p>
+        <p class="why"><b>Why:</b> makes trade-offs explicit and tunable.</p>
+        <div class="out">Output: <code>ranked</code></div>
+      </article>
+      <div class="arrow" aria-hidden="true">→</div>
+      <article class="card llm">
+        <div class="top"><span class="num">12 · write</span><span class="chip">LLM</span></div>
+        <h2>Write significance</h2>
+        <p class="what">Scholarly, practical and societal significance as cited claims, each with a concrete anchor: a number, population, place, policy or cost.</p>
+        <p class="why"><b>Why:</b> blocks generic "increasingly important" claims.</p>
+        <div class="out">Output: <code>draft</code></div>
+      </article>
+      <div class="arrow" aria-hidden="true">→</div>
+      <article class="card gate">
+        <div class="top"><span class="num">13 · verify</span><span class="chip">Gate</span></div>
+        <h2>Verify citations and claims</h2>
+        <p class="what">Removes keys not in the ledger, checks each claim against the abstracts it cites, confirms DOIs resolve to the same title, flags generic phrasing.</p>
+        <p class="why"><b>Why:</b> last defence against invented or misattributed citations.</p>
+        <div class="out">Output: <code>qc</code></div>
+      </article>
+      <div class="arrow" aria-hidden="true">→</div>
+      <article class="card api">
+        <div class="top"><span class="num">14 · render</span><span class="chip">Code</span></div>
+        <h2>Assemble the report</h2>
+        <p class="what">Drops unsupported claims, labels partly supported ones, numbers references, and builds the bibliography from database records only.</p>
+        <p class="why"><b>Why:</b> the model never writes the reference list.</p>
+        <div class="out">Output: <code>report.md</code></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="io">
+    <h3>Output</h3>
+    <p>A report with five sections: <b>1. Significance</b> · <b>2. State of the art</b> · <b>3. Gaps and open problems</b> · <b>4. Candidate directions</b> (research question, novelty, feasibility, risk) · <b>5. Recommendation</b>. Alongside it, <code>qc_report.json</code> records claim support, removed citations, DOI match rate and literature coverage, and flags the report as low confidence when checks fail.</p>
+  </section>
+
+  <footer>Built as a LangGraph pipeline with role-specialized LLM nodes (Researcher, Critic, Writer). Field-specific behavior lives in a YAML config, so new disciplines are added without code changes.</footer>
+</div>
