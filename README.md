@@ -65,6 +65,17 @@ Every run records tokens and an estimated cost per stage in `qc_report.json` →
 - **Batched checks.** Novelty judging is one call for all directions. Claim verification checks up to 40 claims per call and sends each cited abstract once.
 - **Targeted revision.** A revision round regenerates and re-critiques only the directions the critic flagged.
 
+## Gates
+Gates are set in `config/rubric.yaml` under `gates`.
+- **Early stop.** If fewer than `min_ledger_to_continue` papers (default 8) remain after every search round, the run skips analysis and writes a short report: what was found, which queries were tried, and what to try next. `qc_report.json` gets `stopped_early: true`.
+- **Revision round.** It runs only when fewer than 3 directions are usable, and at most once.
+- **Light critique.** When the novelty check leaves `light_critique_max_candidates` directions or fewer (default 3), the critic runs at medium effort instead of high.
+- **Cost cap.** Set `max_cost_usd`, or the env var `RESEARCH_ASSISTANT_MAX_COST_USD`, e.g. `0.75`. Once the estimated spend reaches it:
+  - every later call runs one effort level lower;
+  - the revision round is skipped.
+
+  Verification always runs. `token_usage.budget` records where the cap was hit. The default is no cap.
+
 ## Knobs
 - `RESEARCH_ASSISTANT_MODEL` / `RESEARCH_ASSISTANT_BULK_MODEL`: the bulk model handles entailment and novelty judging. Try `claude-haiku-5-5` there only after an eval shows quality holds.
 - `RESEARCH_ASSISTANT_FALLBACK=0` turns off the server-side refusal fallback.

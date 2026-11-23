@@ -20,7 +20,7 @@ from datetime import date
 from . import prompts as P
 from .config import all_openalex_fields, build_profile, profiles_for_fields, rubric_cfg, stage_weights
 from .ledger import add_records, coverage, digest, facet_matrix, score_and_trim, top_groups
-from .llm import ask
+from .llm import ask, over_budget
 from .schemas import (
     Critiques, Directions, Facets, FieldGuess, Gaps, Intake, Landscape, NoveltyBatch, NoveltyVerdict, QueryPlan,
     Recommendation, ReportDraft,
@@ -37,6 +37,10 @@ RISK_LEVEL = {"low": 0, "medium": 1, "high": 2}
 SHARED_RECORDS = 60       # papers in the shared, cached digest
 SHARED_ABSTRACT_CHARS = 500
 NOVELTY_ABSTRACT_CHARS = 300
+
+
+def _gates() -> dict:
+    return rubric_cfg().get("gates", {})
 
 
 def _shared(s: State) -> str:
@@ -185,8 +189,13 @@ def retrieve(s: State) -> dict:
 
 
 def coverage_ok(s: State) -> str:
-    enough = len(s["ledger"]) >= rubric_cfg()["qc_thresholds"]["min_ledger_size"]
-    return "ok" if enough or s["retrieval_rounds"] >= MAX_RETRIEVAL_ROUNDS else "thin"
+    """ok -> continue; thin -> search again; insufficient -> stop early (gate)."""
+    n = len(s["ledger"])
+    if n >= rubric_cfg()["qc_thresholds"]["min_ledger_size"]:
+        return "ok"
+    if s["retrieval_rounds"] < MAX_RETRIEVAL_ROUNDS:
+        return "thin"
+    return "insufficient" if n < _gates()["min_ledger_to_continue"] else "ok"
 
 
 # ------------------------------------------------------------------- S5-S6 --
@@ -311,6 +320,11 @@ def novelty_check(s: State) -> dict:
     return {"candidates": candidates, "ledger": ledger, "novelty_cache": cache, "notes": notes}
 
 
+def critique_effort(n_candidates: int) -> str:
+    """Gate: with few candidates there is little to compare, so a medium-effort critique is enough."""
+    return "medium" if n_candidates <= _gates().get("light_critique_max_candidates", 3) else "high"
+
+
 def critic_view(i: int, d, nv) -> dict:
     """Only the fields the critic scores, in compact form (no schema noise, claims as 'text [keys]')."""
     return {
@@ -345,7 +359,7 @@ def critique(s: State) -> dict:
                             banned=", ".join(f'"{b}"' for b in rub["banned_phrases"][:4])),
             f"DIRECTIONS:\n{json.dumps(items, separators=(',', ':'))}\n\n"
             f"CITED RECORDS:\n{digest(s['ledger'], cited, CRITIC_ABSTRACT_CHARS)}",
-            Critiques, stage="critique", effort="high",
+            Critiques, stage="critique", effort=critique_effort(len(cands)),
         )
         horizon = s["context"].horizon_months
         for c in out.critiques:  # deterministic guards the critic can't talk its way past
@@ -373,7 +387,7 @@ def is_usable(c) -> bool:
 
 def needs_revision(s: State) -> str:
     """Run the (expensive) revision round only when too few directions are usable."""
-    if s.get("revisions", 0) >= 1:
+    if s.get("revisions", 0) >= 1 or over_budget():  # cost cap reached: skip the revision round
         return "done"
     usable = [c for c in s["critiques"] if is_usable(c)]
     return "revise" if len(usable) < MIN_USABLE else "done"

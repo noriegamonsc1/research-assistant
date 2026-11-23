@@ -154,3 +154,39 @@ def render(s: State) -> str:
 
 def render_node(s: State) -> dict:
     return {"report_md": render(s)}
+
+
+def stop_early_node(s: State) -> dict:
+    """Gate: too little literature after every search round. Skip the analysis stages entirely
+    and return a short report that says so, lists what was found, and suggests next steps."""
+    from .llm import usage_report  # local import keeps render free of API code at import time
+
+    ledger = s.get("ledger", {})
+    refs = Refs(ledger, [])
+    found = [f"- {r.title}{refs.cite([k])}" for k, r in list(ledger.items())[:15]]
+    queries = [f"- {q.source}: {q.text}" for q in s.get("queries", [])]
+    md = [
+        "> **STOPPED EARLY.** Too little indexed literature was found to support a reliable analysis, "
+        "so the remaining stages were skipped to avoid spending tokens on thin evidence.\n",
+        f"# Research directions: {s.get('topic', '')}\n",
+        f"Only **{len(ledger)}** relevant records were found after {s.get('retrieval_rounds', 0)} search rounds "
+        f"(field: {' + '.join(s.get('fields', [])) or 'unresolved'}).\n",
+        "## What to try next\n",
+        "- Broaden the topic, or name the field explicitly with `--field`.",
+        "- Add synonyms or the terms used in the field's own literature.",
+        "- For fields with thin digital coverage (humanities, regional studies), consult a subject librarian, "
+        "key monographs and archives; this tool can only see what bibliographic APIs index.\n",
+        "## What was found\n", *(found or ["_Nothing relevant._"]), "",
+        "## Queries tried\n", *queries, "",
+        "## References\n" + refs.bibliography(),
+    ]
+    qc = {
+        "stopped_early": True,
+        "reason": f"{len(ledger)} records < gates.min_ledger_to_continue",
+        "low_confidence": True,
+        "coverage": s.get("coverage", {}),
+        "fields": s.get("fields", []),
+        "notes": s.get("notes", []),
+        "token_usage": usage_report(),
+    }
+    return {"report_md": "\n".join(md), "qc": qc}

@@ -46,6 +46,8 @@ CACHE_WRITE_X = 1.25  # 5-minute cache
 _client: anthropic.Anthropic | None = None
 _lock = threading.Lock()
 _usage: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+_budget: dict = {"exceeded_at": None}
+STEP_DOWN = {"max": "xhigh", "xhigh": "high", "high": "medium", "medium": "low", "low": "low"}
 
 
 def client() -> anthropic.Anthropic:
@@ -65,6 +67,32 @@ class LLMRefusal(RuntimeError):
 def reset_usage() -> None:
     with _lock:
         _usage.clear()
+        _budget["exceeded_at"] = None
+
+
+def cost_cap() -> float | None:
+    """Per-run cap in USD: env RESEARCH_ASSISTANT_MAX_COST_USD, else config gates.max_cost_usd."""
+    env = os.environ.get("RESEARCH_ASSISTANT_MAX_COST_USD")
+    if env:
+        return float(env)
+    from .config import rubric_cfg
+    cap = rubric_cfg().get("gates", {}).get("max_cost_usd")
+    return float(cap) if cap is not None else None
+
+
+def spent_usd() -> float:
+    with _lock:
+        return sum(u["est_cost_usd"] for u in _usage.values())
+
+
+def over_budget() -> bool:
+    cap = cost_cap()
+    return cap is not None and spent_usd() >= cap
+
+
+def effective_effort(effort: str) -> str:
+    """Once the cost cap is reached, every later call runs one effort level lower."""
+    return STEP_DOWN.get(effort, effort) if over_budget() else effort
 
 
 def record_usage(stage: str, model: str, usage) -> None:
@@ -82,6 +110,9 @@ def record_usage(stage: str, model: str, usage) -> None:
         u["cache_write_tokens"] += c_write
         u["output_tokens"] += out
         u["est_cost_usd"] += cost
+    cap = cost_cap()
+    if cap is not None and _budget["exceeded_at"] is None and spent_usd() >= cap:
+        _budget["exceeded_at"] = stage
 
 
 def usage_report() -> dict:
@@ -90,7 +121,8 @@ def usage_report() -> dict:
     keys = ["calls", "input_tokens", "cache_read_tokens", "cache_write_tokens", "output_tokens", "est_cost_usd"]
     total = {k: sum(st.get(k, 0) for st in stages.values()) for k in keys}
     total["est_cost_usd"] = round(total["est_cost_usd"], 4)
-    return {"by_stage": stages, "total": total,
+    budget = {"cap_usd": cost_cap(), "spent_usd": total["est_cost_usd"], "exceeded_at_stage": _budget["exceeded_at"]}
+    return {"by_stage": stages, "total": total, "budget": budget,
             "note": "Cost is estimated from list prices; check the Console for actual billing."}
 
 
@@ -140,6 +172,7 @@ def ask(
     max_tokens: int = 16000,
     shared_context: str | None = None,
 ) -> T:
+    effort = effective_effort(effort)
     kwargs = build_request(system, user, effort=effort, bulk=bulk, max_tokens=max_tokens, shared_context=shared_context)
     resp = client().beta.messages.parse(output_format=schema, **kwargs)
     record_usage(stage, getattr(resp, "model", None) or kwargs["model"], resp.usage)

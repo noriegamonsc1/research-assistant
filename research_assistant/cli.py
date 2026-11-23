@@ -51,8 +51,15 @@ def main(argv: list[str] | None = None) -> None:
     state = run(args.input, args.field)
     save_run(state, out)
     qc = state.get("qc", {})
-    print(f"\nDone. {qc.get('n_claims', 0)} claims, unsupported rate {qc.get('unsupported_rate')}, "
-          f"DOI match {qc.get('doi_match_rate')}, low_confidence={qc.get('low_confidence')}")
+    if qc.get("stopped_early"):
+        print(f"\nStopped early: {qc.get('reason')}. See the report for what was found and what to try next.")
+    else:
+        print(f"\nDone. {qc.get('n_claims', 0)} claims, unsupported rate {qc.get('unsupported_rate')}, "
+              f"DOI match {qc.get('doi_match_rate')}, low_confidence={qc.get('low_confidence')}")
+    budget = qc.get("token_usage", {}).get("budget", {})
+    if budget.get("exceeded_at_stage"):
+        print(f"Cost cap ${budget['cap_usd']:.2f} reached at '{budget['exceeded_at_stage']}': "
+              "later calls ran at lower effort and the revision round was skipped.")
     tot = qc.get("token_usage", {}).get("total", {})
     if tot:
         print(f"Tokens: {tot['calls']} calls, input {tot['input_tokens']:,} + cached {tot['cache_read_tokens']:,}, "

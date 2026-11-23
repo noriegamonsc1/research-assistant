@@ -316,3 +316,49 @@ def test_critic_view_is_compact_but_complete():
 def test_unused_output_fields_removed():
     from research_assistant.schemas import Entailment, FieldGuess
     assert "reason" not in Entailment.model_fields and "rationale" not in FieldGuess.model_fields
+
+
+# ------------------------------------------------------------------ gates --
+
+@pytest.mark.parametrize("n,rounds,expect", [
+    (20, 1, "ok"), (10, 1, "thin"), (10, 2, "ok"), (5, 2, "insufficient"),
+])
+def test_coverage_gate(n, rounds, expect):
+    s = {"ledger": {f"W{i}": rec(f"W{i}", f"t{i}") for i in range(n)}, "retrieval_rounds": rounds}
+    assert nodes.coverage_ok(s) == expect
+
+
+def test_stop_early_report_and_graph_route():
+    from research_assistant.graph import build
+    from research_assistant.render import stop_early_node
+    s = make_state()
+    s.update({"retrieval_rounds": 2, "queries": []})
+    out = stop_early_node(s)
+    assert out["qc"]["stopped_early"] and out["qc"]["low_confidence"]
+    assert "STOPPED EARLY" in out["report_md"] and "https://doi.org/10.1/real" in out["report_md"]
+    assert "stop_early" in build().get_graph().nodes
+
+
+@pytest.mark.parametrize("n,expect", [(2, "medium"), (3, "medium"), (5, "high")])
+def test_light_critique_gate(n, expect):
+    assert nodes.critique_effort(n) == expect
+
+
+def test_cost_cap_steps_down_effort_and_skips_revision(monkeypatch):
+    monkeypatch.setenv("RESEARCH_ASSISTANT_MAX_COST_USD", "0.05")
+    llm.reset_usage()
+    assert llm.effective_effort("high") == "high" and not llm.over_budget()
+    big = type("U", (), {"input_tokens": 0, "output_tokens": 3000, "cache_read_input_tokens": 0,
+                         "cache_creation_input_tokens": 0})()  # 3000 * $20/M = $0.06
+    llm.record_usage("directions", "claude-opus-5-5", big)
+    assert llm.over_budget()
+    assert llm.effective_effort("high") == "medium" and llm.effective_effort("low") == "low"
+    assert llm.usage_report()["budget"]["exceeded_at_stage"] == "directions"
+    s = {"revisions": 0, "critiques": [_crit(0, "reject")]}
+    assert nodes.needs_revision(s) == "done"  # would be "revise" without the cap
+    llm.reset_usage()
+
+
+def test_no_cap_by_default(monkeypatch):
+    monkeypatch.delenv("RESEARCH_ASSISTANT_MAX_COST_USD", raising=False)
+    assert llm.cost_cap() is None and not llm.over_budget()

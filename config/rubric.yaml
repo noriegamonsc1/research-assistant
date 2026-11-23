@@ -42,3 +42,15 @@ qc_thresholds:
   max_unsupported_claim_rate: 0.10
   min_doi_match_rate: 0.95
   min_ledger_size: 15
+
+# Token-saving gates.
+gates:
+  # After all search rounds, fewer papers than this -> stop with a short "not enough literature"
+  # report instead of running the full pipeline on thin evidence.
+  min_ledger_to_continue: 8
+  # When the novelty check leaves this many directions or fewer, the critic runs at medium effort.
+  light_critique_max_candidates: 3
+  # Per-run spending cap in USD (estimated from list prices). null = no cap.
+  # Once reached: every later call drops one effort level and the revision round is skipped.
+  # Verification still runs. Env RESEARCH_ASSISTANT_MAX_COST_USD overrides this value.
+  max_cost_usd: null
